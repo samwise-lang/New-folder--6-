@@ -1,0 +1,19 @@
+{
+  "name": "stockroom-inventory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A small MongoDB-backed product inventory",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build": "node scripts/build.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "mongodb": "^6.20.0"
+  }
+}

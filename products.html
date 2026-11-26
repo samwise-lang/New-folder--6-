@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f2">
+  <title>Stockroom — Product inventory</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #202a27;
+      --muted: #78817c;
+      --line: #e8ebe6;
+      --canvas: #f5f6f2;
+      --paper: #fff;
+      --green: #2f725b;
+      --green-dark: #245c49;
+      --green-pale: #e9f2ed;
+      --amber: #c58a38;
+      --shadow: 0 16px 48px rgba(31, 48, 40, .07);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--canvas);
+      color: var(--ink);
+      font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app-shell { min-height: 100vh; display: flex; }
+    .sidebar {
+      position: sticky; top: 0; display: flex; flex: 0 0 220px; flex-direction: column;
+      width: 220px; height: 100vh; padding: 21px 13px 15px; background: #fff;
+      border-right: 1px solid var(--line);
+    }
+    .sidebar .brand { padding: 0 9px 24px; font-size: 15px; }
+    .sidebar .brand-mark { width: 30px; height: 30px; border-radius: 9px; }
+    .nav-label { padding: 0 10px 8px; color: #a0a7a2; font-size: 9px; font-weight: 750; letter-spacing: 1.1px; text-transform: uppercase; }
+    .side-nav { display: grid; gap: 3px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 10px;
+      border-radius: 8px; color: #68726c; font-size: 11px; font-weight: 550; text-decoration: none;
+    }
+    .nav-item svg { width: 15px; height: 15px; color: #88938c; }
+    .nav-item.active { background: #edf4ef; color: var(--green-dark); font-weight: 700; }
+    .nav-item.active svg { color: var(--green); }
+    .sidebar-bottom { margin-top: auto; padding: 12px 8px 0; border-top: 1px solid var(--line); }
+    .profile { display: flex; align-items: center; gap: 9px; color: #526058; font-size: 11px; font-weight: 650; }
+    .profile .avatar { width: 29px; height: 29px; font-size: 11px; }
+    .profile small { display: block; color: #98a09a; font-size: 9px; font-weight: 450; }
+    .workspace { min-width: 0; flex: 1; }
+    .topbar {
+      height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 4%;
+      background: rgba(255,255,255,.88);
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 17px; font-weight: 750; letter-spacing: -.5px; }
+    .brand-mark {
+      display: grid; place-items: center; width: 34px; height: 34px;
+      color: white; background: var(--green); border-radius: 11px;
+    }
+    .brand-mark svg { width: 19px; height: 19px; }
+    .topbar-right { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 12px; }
+    .status-dot { display: inline-block; width: 7px; height: 7px; margin-right: 7px; background: #64a47e; border-radius: 50%; }
+    .status-dot.offline { background: #d98e78; }
+    .avatar { display: grid; place-items: center; width: 34px; height: 34px; background: #e9eee9; color: var(--green-dark); border-radius: 50%; font-weight: 700; }
+    main { max-width: 1480px; margin: 0 auto; padding: 27px 4% 55px; }
+    .heading-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; margin-bottom: 21px; }
+    .eyebrow { color: var(--green); font-size: 11px; font-weight: 750; letter-spacing: 1.5px; text-transform: uppercase; }
+    h1 { margin: 5px 0 4px; font-size: clamp(23px, 2.4vw, 29px); letter-spacing: -1.1px; line-height: 1.15; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+    .primary-button {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      min-height: 43px; padding: 0 17px; border: 0; border-radius: 9px;
+      background: var(--green); color: white; font-weight: 650;
+      box-shadow: 0 5px 12px rgba(47,114,91,.15); transition: background .18s, transform .18s;
+    }
+    .primary-button:hover { background: var(--green-dark); transform: translateY(-1px); }
+    .primary-button:disabled { background: #70877c; box-shadow: none; cursor: not-allowed; }
+    .primary-button svg { width: 17px; height: 17px; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 17px; }
+    .stat-card { min-height: 94px; padding: 14px 16px; background: var(--paper); border: 1px solid var(--line); border-radius: 11px; }
+    .stat-top { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; font-weight: 550; }
+    .stat-icon { display: grid; place-items: center; width: 31px; height: 31px; background: var(--green-pale); color: var(--green); border-radius: 9px; }
+    .stat-icon svg { width: 16px; height: 16px; }
+    .stat-value { margin-top: 6px; font-size: 23px; font-weight: 730; letter-spacing: -.8px; line-height: 1; }
+    .stat-foot { margin-top: 5px; color: var(--muted); font-size: 10px; }
+    .dashboard-panels { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(245px, .9fr); gap: 13px; margin-bottom: 17px; }
+    .chart-card { min-height: 188px; padding: 15px 17px; background: white; border: 1px solid var(--line); border-radius: 11px; }
+    .chart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .chart-title { font-size: 12px; font-weight: 720; }
+    .chart-subtitle { margin-top: 2px; color: #909992; font-size: 10px; }
+    .category-chart { display: grid; gap: 12px; margin-top: 18px; }
+    .category-chart-row { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(80px, 2fr) 24px; align-items: center; gap: 12px; color: #6f7972; font-size: 10px; }
+    .category-chart-track { height: 8px; overflow: hidden; border-radius: 8px; background: #f0f3f0; }
+    .category-chart-fill { height: 100%; border-radius: inherit; background: #9db8a7; transition: width .25s ease; }
+    .category-chart-count { color: #3c4941; font-size: 10px; font-weight: 700; text-align: right; }
+    .alert-content { display: flex; align-items: center; justify-content: center; gap: 17px; min-height: 115px; }
+    .donut { display: grid; flex: 0 0 98px; place-items: center; width: 98px; height: 98px; border-radius: 50%; background: conic-gradient(#edf0ec 0 100%); }
+    .donut::before { width: 66px; height: 66px; border-radius: 50%; background: white; content: ""; grid-area: 1 / 1; }
+    .donut-center { z-index: 1; grid-area: 1 / 1; text-align: center; }
+    .donut-center strong { display: block; font-size: 16px; line-height: 1.2; }
+    .donut-center span { color: #8c958f; font-size: 8px; }
+    .alert-legend { display: grid; gap: 8px; color: #78827b; font-size: 9px; }
+    .alert-legend div { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .alert-dot { width: 7px; height: 7px; border-radius: 50%; background: #67b68a; }
+    .alert-dot.low { background: #f0bc78; }
+    .alert-dot.out { background: #e49388; }
+    .inventory-layout { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: 19px; }
+    .inventory-panel { overflow: hidden; background: var(--paper); border: 1px solid var(--line); border-radius: 13px; }
+    .inventory-header { display: flex; justify-content: space-between; align-items: center; gap: 15px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+    .inventory-title { font-size: 16px; font-weight: 720; letter-spacing: -.3px; }
+    .result-count { margin-top: 2px; color: var(--muted); font-size: 11px; }
+    .tools { display: flex; align-items: center; gap: 9px; }
+    .search-wrap { position: relative; }
+    .search-wrap svg { position: absolute; top: 50%; left: 11px; width: 15px; height: 15px; color: #8d9690; transform: translateY(-50%); pointer-events: none; }
+    .search-input, .sort-select {
+      height: 37px; border: 1px solid var(--line); border-radius: 8px; outline: none; background: white; color: var(--ink); font-size: 12px;
+    }
+    .search-input { width: 205px; padding: 0 11px 0 33px; }
+    .search-input:focus, .sort-select:focus { border-color: #87ae99; box-shadow: 0 0 0 3px rgba(47,114,91,.09); }
+    .sort-select { padding: 0 26px 0 10px; }
+    .filter-select { height: 37px; padding: 0 26px 0 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: #59645d; font-size: 11px; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    thead { background: #fafbf9; }
+    th { padding: 11px 14px; color: #8a938d; font-size: 9px; font-weight: 700; letter-spacing: .65px; text-transform: uppercase; white-space: nowrap; }
+    td { padding: 11px 14px; border-top: 1px solid #f0f1ee; vertical-align: middle; }
+    tbody tr { transition: background .13s; }
+    tbody tr:hover { background: #fcfdfb; }
+    .product-name { color: #29332e; font-size: 12px; font-weight: 650; }
+    .product-description { max-width: 360px; overflow: hidden; color: #818a84; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .category-pill { display: inline-block; padding: 4px 8px; border: 1px solid #e8eee9; border-radius: 20px; background: #f7faf7; color: #63766a; font-size: 10px; white-space: nowrap; }
+    .units { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 650; white-space: nowrap; }
+    .units-label { padding-left: 3px; color: #909891; font-size: 10px; font-weight: 450; }
+    .row-action { display: grid; place-items: center; width: 25px; height: 25px; border: 0; border-radius: 6px; background: transparent; color: #859088; }
+    .row-action:hover { background: #f0f4f0; color: var(--green-dark); }
+    .row-action svg { width: 14px; height: 14px; }
+    .empty-state { padding: 45px 20px; color: var(--muted); text-align: center; font-size: 13px; }
+    .empty-state strong { display: block; margin-bottom: 4px; color: var(--ink); }
+    .table-footer { display: flex; justify-content: space-between; padding: 13px 20px; border-top: 1px solid var(--line); color: #8a938d; font-size: 11px; }
+    dialog { width: min(480px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 15px; box-shadow: 0 24px 80px rgba(18,36,26,.22); }
+    dialog::backdrop { background: rgba(25,36,30,.4); backdrop-filter: blur(3px); }
+    .dialog-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
+    .dialog-head h2 { margin: 0; font-size: 19px; letter-spacing: -.5px; }
+    .dialog-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .icon-button { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: #f4f6f3; color: #69736d; }
+    .icon-button svg { width: 15px; height: 15px; }
+    form { padding: 19px 24px 22px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { color: #536058; font-size: 11px; font-weight: 650; }
+    .field input, .field select, .field textarea { width: 100%; border: 1px solid #e2e7e2; border-radius: 8px; outline: none; background: #fff; padding: 10px 11px; color: var(--ink); font-size: 12px; }
+    .field input, .field select { height: 39px; }
+    .field textarea { min-height: 78px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: #87ae99; box-shadow: 0 0 0 3px rgba(47,114,91,.08); }
+    .form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+    .secondary-button { min-height: 40px; padding: 0 15px; border: 1px solid var(--line); border-radius: 8px; background: white; color: #536058; font-size: 12px; font-weight: 600; }
+    .secondary-button:hover { background: #f8f9f7; }
+    .form-actions .primary-button { min-height: 40px; font-size: 12px; }
+    .toast { position: fixed; right: 24px; bottom: 24px; z-index: 3; padding: 12px 17px; border-radius: 9px; background: #243b30; color: white; box-shadow: var(--shadow); font-size: 12px; opacity: 0; transform: translateY(8px); pointer-events: none; transition: opacity .2s, transform .2s; }
+    .toast.visible { opacity: 1; transform: translateY(0); }
+    @media (max-width: 900px) {
+      main { padding-right: 3%; padding-left: 3%; }
+      .topbar { padding-right: 3%; padding-left: 3%; }
+      .sidebar { flex-basis: 185px; width: 185px; }
+      .stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .inventory-header { align-items: flex-start; flex-direction: column; }
+      .tools { width: 100%; }
+      .search-wrap { flex: 1; }
+      .search-input { width: 100%; }
+    }
+    @media (max-width: 580px) {
+      .sidebar { flex-basis: 62px; width: 62px; padding: 17px 8px; align-items: center; }
+      .sidebar .brand { padding: 0 0 22px; }
+      .sidebar .brand-mark { flex: 0 0 30px; }
+      .sidebar .brand { font-size: 0; gap: 0; }
+      .sidebar .nav-label, .sidebar .nav-item:not(.active), .sidebar .nav-item.active { font-size: 0; }
+      .side-nav { width: 100%; }
+      .nav-item { justify-content: center; padding: 0; }
+      .nav-item svg { width: 17px; height: 17px; }
+      .sidebar-bottom { width: 100%; padding: 12px 0 0; }
+      .profile { justify-content: center; }
+      .profile > span:last-child { display: none; }
+      .dashboard-panels { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 620px) {
+      .topbar { height: 62px; }
+      .topbar-right .status-text { display: none; }
+      main { padding: 22px 14px 40px; }
+      .heading-row { align-items: flex-start; flex-direction: row; }
+      .heading-row .subtitle { max-width: 235px; }
+      .heading-row .primary-button { width: 100%; }
+      .heading-row { flex-wrap: wrap; }
+      .heading-row .primary-button { width: auto; min-height: 38px; padding: 0 12px; font-size: 11px; }
+      .stats { gap: 9px; }
+      .stat-card { min-height: 88px; padding: 11px; }
+      .stat-icon { width: 26px; height: 26px; }
+      .stat-top { font-size: 10px; }
+      .stat-value { font-size: 20px; }
+      .dashboard-panels { gap: 10px; }
+      .chart-card { padding: 13px 12px; }
+      .category-chart { gap: 10px; margin-top: 14px; }
+      .category-chart-row { grid-template-columns: minmax(85px, 1fr) minmax(50px, 2fr) 20px; gap: 8px; font-size: 9px; }
+      .alert-content { gap: 10px; }
+      .donut { flex-basis: 84px; width: 84px; height: 84px; }
+      .donut::before { width: 57px; height: 57px; }
+      .inventory-layout { grid-template-columns: 1fr; }
+      .inventory-header { padding: 16px; }
+      .tools { align-items: stretch; flex-direction: column; }
+      .filter-select, .sort-select { width: 100%; }
+      th, td { padding-right: 10px; padding-left: 10px; }
+      .product-description { max-width: 160px; }
+      .table-footer { padding-right: 14px; padding-left: 14px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"/><path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12v8.5M8 5.3l8 4.5"/></svg></span>
+        Stockroom
+      </div>
+      <div class="nav-label">Workspace</div>
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="nav-item" href="#overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="5" rx="1"/><rect x="13" y="10" width="8" height="11" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/></svg>Dashboard</a>
+        <a class="nav-item active" href="#inventory" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>Inventory</a>
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 10h1m4 0h1m-6 4h1m4 0h1m-5 7v-4h4v4"/></svg>Warehouses</a>
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16l-1 13H5L4 7Z"/><path d="M9 7a3 3 0 0 1 6 0M3 4h18"/></svg>Suppliers</a>
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4"/></svg>Purchase orders</a>
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v11H3zM14 11h4l3 3v4h-7z"/><circle cx="7.5" cy="19" r="1.5"/><circle cx="17.5" cy="19" r="1.5"/></svg>Shipments</a>
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Tracking</a>
+      </nav>
+      <div class="nav-label" style="margin-top:20px">Insights</div>
+      <nav class="side-nav" aria-label="Insights navigation">
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16"/><path d="m7 15 4-4 3 2 5-6"/></svg>Reports</a>
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18M5 7l2 13h10l2-13M9 7V4h6v3"/></svg>Cash flow</a>
+        <a class="nav-item" href="#inventory"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5.5a3 3 0 0 1 0 5.8M18 14a5 5 0 0 1 3 4.5V20"/></svg>Customers</a>
+      </nav>
+      <div class="sidebar-bottom"><div class="profile"><span class="avatar">S</span><span>Samuel Obi<small>Administrator</small></span></div></div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="topbar-right">
+          <span class="status-text"><span class="status-dot" id="backend-status-dot"></span><span id="backend-status-label">Connecting to database</span></span>
+          <span class="avatar" aria-label="Account">A</span>
+        </div>
+      </header>
+
+    <main id="overview">
+      <section class="heading-row" aria-labelledby="page-title">
+        <div>
+          <div class="eyebrow">Wednesday, November 25</div>
+          <h1 id="page-title">Hey Samuel 👋, welcome back!</h1>
+          <p class="subtitle">Here’s what’s happening with your inventory today.</p>
+        </div>
+        <button class="primary-button" id="open-add" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Add product
+        </button>
+      </section>
+
+      <section class="stats" aria-label="Inventory summary">
+        <article class="stat-card">
+          <div class="stat-top"><span>Total products</span><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg></span></div>
+          <div class="stat-value" id="total-products">0</div>
+          <div class="stat-foot">Unique products in catalog</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>In stock</span><span class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span></div>
+          <div class="stat-value" id="in-stock-count">0</div>
+          <div class="stat-foot">Products ready to ship</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>Low stock</span><span class="stat-icon" style="background:#fbf2e7;color:#bd853d"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5m0 3h.01"/></svg></span></div>
+          <div class="stat-value" id="low-stock-count">0</div>
+          <div class="stat-foot">Needs a restock soon</div>
+        </article>
+        <article class="stat-card">
+          <div class="stat-top"><span>Out of stock</span><span class="stat-icon" style="background:#faecea;color:#bf6d62"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg></span></div>
+          <div class="stat-value" id="out-stock-count">0</div>
+          <div class="stat-foot">Currently unavailable</div>
+        </article>
+      </section>
+
+      <section class="dashboard-panels" aria-label="Inventory insights">
+        <article class="chart-card">
+          <div class="chart-head">
+            <div><div class="chart-title">Products by category</div><div class="chart-subtitle">Your inventory grouped by category</div></div>
+          </div>
+          <div class="category-chart" id="category-chart" aria-label="Product counts by category"></div>
+        </article>
+        <article class="chart-card">
+          <div class="chart-head"><div><div class="chart-title">Inventory alerts</div><div class="chart-subtitle">Current product availability</div></div></div>
+          <div class="alert-content">
+            <div class="donut" aria-hidden="true"><div class="donut-center"><strong id="availability-percent">0%</strong><span>in stock</span></div></div>
+            <div class="alert-legend">
+              <div><i class="alert-dot"></i><span>In stock <b id="legend-in-stock">0</b></span></div>
+              <div><i class="alert-dot low"></i><span>Low stock <b id="legend-low-stock">0</b></span></div>
+              <div><i class="alert-dot out"></i><span>Out of stock <b id="legend-out-stock">0</b></span></div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="inventory-layout" aria-label="Product inventory">
+        <section class="inventory-panel" id="inventory">
+          <div class="inventory-header">
+            <div>
+              <div class="inventory-title" id="inventory-title">Product inventory</div>
+              <div class="result-count" id="result-count">0 products</div>
+            </div>
+            <div class="tools">
+              <select class="filter-select" id="category-filter" aria-label="Filter by category"></select>
+              <label class="search-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.5 4.5"/></svg>
+                <input class="search-input" id="search" type="search" placeholder="Search products..." aria-label="Search products">
+              </label>
+              <select class="sort-select" id="sort" aria-label="Sort products"><option value="name">Sort: A–Z</option><option value="units-desc">Most units</option><option value="units-asc">Fewest units</option></select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Description</th><th scope="col">Units</th><th scope="col">Edit</th></tr></thead>
+              <tbody id="product-rows"></tbody>
+            </table>
+            <div class="empty-state" id="empty-state" hidden><strong id="empty-title">No products yet</strong><span id="empty-description">Add your first product to see it here.</span></div>
+          </div>
+          <div class="table-footer"><span id="footer-count">0 products</span><span>Inventory catalog</span></div>
+        </section>
+      </section>
+    </main>
+    </div>
+  </div>
+
+  <dialog id="add-dialog" aria-labelledby="dialog-title">
+    <div class="dialog-head">
+      <div><h2 id="dialog-title">Add a product</h2><p id="dialog-description">Add an item to your inventory catalog.</p></div>
+      <button class="icon-button" id="close-dialog" type="button" aria-label="Close dialog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+    <form id="product-form">
+      <div class="form-grid">
+        <div class="field full"><label for="product-name-input">Product name</label><input id="product-name-input" name="name" required maxlength="80" placeholder="e.g. Ceramic travel mug"></div>
+        <div class="field"><label for="product-category-input">Category</label><select id="product-category-input" name="category" required></select></div>
+        <div class="field"><label for="product-units-input">Units in stock</label><input id="product-units-input" name="units" type="number" min="0" max="1000000" step="1" required placeholder="0"></div>
+        <div class="field full"><label for="product-description-input">Description</label><textarea id="product-description-input" name="description" required maxlength="240" placeholder="A short description of this product"></textarea></div>
+      </div>
+      <div class="form-actions"><button class="secondary-button" id="cancel-dialog" type="button">Cancel</button><button class="primary-button" id="save-product" type="submit">Save product</button></div>
+    </form>
+  </dialog>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      "use strict";
+      var maxProducts = 10;
+      var apiBaseUrl = "";
+      var liveServerPort = Number(window.location.port);
+      var isLoopbackHost = window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" || window.location.hostname === "[::1]";
+      if (window.location.protocol === "http:" && isLoopbackHost &&
+          liveServerPort >= 5500 && liveServerPort <= 5599) {
+        apiBaseUrl = "http://127.0.0.1:3000";
+      }
+      var categories = [
+        { name: "Electronics", icon: "⌁" },
+        { name: "Textile", icon: "◈" },
+        { name: "Cleaning materials", icon: "✳" },
+        { name: "Furniture", icon: "⌂" },
+        { name: "Footwear", icon: "▤" }
+      ];
+      var products = [];
+      var inventoryReady = false;
+      var loadError = null;
+      var selectedCategory = "All products";
+      var categoryFilter = document.getElementById("category-filter");
+      var rows = document.getElementById("product-rows");
+      var searchInput = document.getElementById("search");
+      var sortSelect = document.getElementById("sort");
+      var dialog = document.getElementById("add-dialog");
+      var form = document.getElementById("product-form");
+      var editingProductId = null;
+      var toastTimer;
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, function (character) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character];
+        });
+      }
+
+      function render() {
+        var query = searchInput.value.trim().toLowerCase();
+        var visible = products.filter(function (product) {
+          var matchesCategory = selectedCategory === "All products" || product.category === selectedCategory;
+          var searchable = (product.name + " " + product.category + " " + product.description).toLowerCase();
+          return matchesCategory && searchable.indexOf(query) !== -1;
+        });
+        if (sortSelect.value === "units-desc") visible.sort(function (a, b) { return b.units - a.units; });
+        else if (sortSelect.value === "units-asc") visible.sort(function (a, b) { return a.units - b.units; });
+        else visible.sort(function (a, b) { return a.name.localeCompare(b.name); });
+
+        rows.innerHTML = visible.map(function (product) {
+          return "<tr><td><span class=\"product-name\">" + escapeHtml(product.name) + "</span></td><td><span class=\"category-pill\">" +
+            escapeHtml(product.category) + "</span></td><td><span class=\"product-description\" title=\"" +
+            escapeHtml(product.description) + "\">" + escapeHtml(product.description) + "</span></td><td><span class=\"units\">" +
+            product.units.toLocaleString() + '<span class="units-label">units</span></span></td><td><button class="row-action" type="button" data-edit-id="' +
+            escapeHtml(product.id) + '" aria-label="Edit ' + escapeHtml(product.name) + '" title="Edit product"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14 5 5 5M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/></svg></button></td></tr>';
+        }).join("");
+        var emptyState = document.getElementById("empty-state");
+        emptyState.hidden = visible.length > 0;
+        if (!inventoryReady) {
+          document.getElementById("empty-title").textContent = loadError ? "Unable to load inventory" : "Connecting to your inventory";
+          document.getElementById("empty-description").textContent = loadError
+            ? "Check that the backend is running and MongoDB Atlas is configured, then reload this page."
+            : "Your saved products will appear here.";
+        } else if (products.length === 0) {
+          document.getElementById("empty-title").textContent = "Your inventory is empty";
+          document.getElementById("empty-description").textContent = "Select Add product to enter your first item.";
+        } else {
+          document.getElementById("empty-title").textContent = "No products found";
+          document.getElementById("empty-description").textContent = "Try a different search or category.";
+        }
+        var countLabel = visible.length + (visible.length === 1 ? " product" : " products");
+        document.getElementById("result-count").textContent = inventoryReady ? "Showing " + countLabel :
+          loadError ? "Inventory unavailable" : "Loading inventory";
+        document.getElementById("footer-count").textContent = countLabel;
+        document.getElementById("total-products").textContent = products.length.toLocaleString();
+        var addButton = document.getElementById("open-add");
+        var atProductLimit = products.length >= maxProducts;
+        addButton.disabled = !inventoryReady || atProductLimit;
+        addButton.title = !inventoryReady ? "Connect to the backend to add products" :
+          atProductLimit ? "Inventory limit reached (10 products)" : "Add a product";
+        document.getElementById("backend-status-label").textContent = inventoryReady ? "Connected to database" :
+          loadError ? "Database unavailable" : "Connecting to database";
+        document.getElementById("backend-status-dot").classList.toggle("offline", !!loadError);
+        var inStock = products.filter(function (product) { return product.units > 20; }).length;
+        var lowStock = products.filter(function (product) { return product.units > 0 && product.units <= 20; }).length;
+        var outOfStock = products.filter(function (product) { return product.units === 0; }).length;
+        var availablePercent = products.length ? Math.round(inStock * 100 / products.length) : 0;
+        var categoryCounts = categories.map(function (category) {
+          return {
+            name: category.name,
+            count: products.filter(function (product) { return product.category === category.name; }).length
+          };
+        });
+        var highestCategoryCount = categoryCounts.reduce(function (highest, category) {
+          return Math.max(highest, category.count);
+        }, 0);
+        document.getElementById("category-chart").innerHTML = categoryCounts.map(function (category) {
+          var width = highestCategoryCount ? Math.round(category.count * 100 / highestCategoryCount) : 0;
+          return '<div class="category-chart-row"><span>' + escapeHtml(category.name) +
+            '</span><div class="category-chart-track"><div class="category-chart-fill" style="width:' + width +
+            '%"></div></div><span class="category-chart-count">' + category.count + "</span></div>";
+        }).join("");
+        document.getElementById("in-stock-count").textContent = inStock.toLocaleString();
+        document.getElementById("low-stock-count").textContent = lowStock.toLocaleString();
+        document.getElementById("out-stock-count").textContent = outOfStock.toLocaleString();
+        document.getElementById("availability-percent").textContent = availablePercent + "%";
+        document.getElementById("legend-in-stock").textContent = inStock;
+        document.getElementById("legend-low-stock").textContent = lowStock;
+        document.getElementById("legend-out-stock").textContent = outOfStock;
+        document.querySelector(".donut").style.background = products.length
+          ? "conic-gradient(#67b68a 0 " + availablePercent + "%, #f0bc78 " +
+            availablePercent + "% " + (availablePercent + Math.round(lowStock * 100 / products.length)) +
+            "%, #e49388 " + (availablePercent + Math.round(lowStock * 100 / products.length)) + "% 100%)"
+          : "conic-gradient(#edf0ec 0 100%)";
+        document.getElementById("inventory-title").textContent = selectedCategory === "All products" ? "Product inventory" : selectedCategory;
+      }
+
+      function showToast(message) {
+        var toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.classList.add("visible");
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(function () { toast.classList.remove("visible"); }, 2600);
+      }
+
+      async function apiRequest(url, method, data) {
+        var response;
+        try {
+          response = await fetch(apiBaseUrl + url, {
+            method: method,
+            headers: data ? { "Content-Type": "application/json" } : undefined,
+            body: data ? JSON.stringify(data) : undefined
+          });
+        } catch (error) {
+          throw new Error("Could not reach the inventory backend. Check that the server is running.");
+        }
+
+        var result;
+        try {
+          result = await response.json();
+        } catch (error) {
+          throw new Error("The inventory backend returned an invalid response.");
+        }
+        if (!response.ok) throw new Error(result.error || "The inventory request failed.");
+        return result;
+      }
+
+      async function loadInventory() {
+        try {
+          var result = await apiRequest("/api/products", "GET");
+          if (!Array.isArray(result.products) || result.products.length > maxProducts) {
+            throw new Error("The inventory backend returned invalid product data.");
+          }
+          products = result.products;
+          inventoryReady = true;
+          loadError = null;
+        } catch (error) {
+          loadError = error;
+          console.error("Could not load inventory from the backend:", error);
+        }
+        render();
+        if (loadError) showToast("Could not load products. Check the backend and MongoDB Atlas settings.");
+      }
+
+      var categorySelect = document.getElementById("product-category-input");
+      categorySelect.innerHTML = categories.map(function (category) {
+        return '<option value="' + escapeHtml(category.name) + '">' + escapeHtml(category.name) + "</option>";
+      }).join("");
+
+      categoryFilter.innerHTML = '<option value="All products">All categories</option>' + categories.map(function (category) {
+        return '<option value="' + escapeHtml(category.name) + '">' + escapeHtml(category.name) + "</option>";
+      }).join("");
+      categoryFilter.addEventListener("change", function () {
+        selectedCategory = categoryFilter.value;
+        render();
+      });
+      searchInput.addEventListener("input", render);
+      sortSelect.addEventListener("change", render);
+      document.getElementById("open-add").addEventListener("click", function () {
+        if (!inventoryReady) {
+          showToast("Connect to the backend before adding products.");
+          return;
+        }
+        if (products.length >= maxProducts) {
+          showToast("Inventory limit reached. You can have up to 10 products.");
+          return;
+        }
+        editingProductId = null;
+        form.reset();
+        document.getElementById("dialog-title").textContent = "Add a product";
+        document.getElementById("dialog-description").textContent = "Add an item to your inventory catalog.";
+        document.getElementById("save-product").textContent = "Save product";
+        dialog.showModal();
+        document.getElementById("product-name-input").focus();
+      });
+      rows.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-edit-id]");
+        if (!button) return;
+        var product = products.find(function (item) { return item.id === button.getAttribute("data-edit-id"); });
+        if (!product) {
+          showToast("This product could not be found.");
+          return;
+        }
+        editingProductId = product.id;
+        form.reset();
+        document.getElementById("product-name-input").value = product.name;
+        document.getElementById("product-category-input").value = product.category;
+        document.getElementById("product-description-input").value = product.description;
+        document.getElementById("product-units-input").value = product.units;
+        document.getElementById("dialog-title").textContent = "Edit product";
+        document.getElementById("dialog-description").textContent = "Update this item in your inventory.";
+        document.getElementById("save-product").textContent = "Save changes";
+        dialog.showModal();
+        document.getElementById("product-name-input").focus();
+      });
+      document.getElementById("close-dialog").addEventListener("click", function () { dialog.close(); });
+      document.getElementById("cancel-dialog").addEventListener("click", function () { dialog.close(); });
+      dialog.addEventListener("click", function (event) {
+        if (event.target === dialog) dialog.close();
+      });
+      form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        if (!inventoryReady) {
+          showToast("Connect to the backend before saving products.");
+          return;
+        }
+        if (!editingProductId && products.length >= maxProducts) {
+          showToast("Inventory limit reached. You can have up to 10 products.");
+          return;
+        }
+        if (!form.reportValidity()) return;
+        var data = new FormData(form);
+        var productDetails = {
+          name: String(data.get("name")).trim(),
+          category: String(data.get("category")),
+          description: String(data.get("description")).trim(),
+          units: Number(data.get("units"))
+        };
+        if (!productDetails.name || !productDetails.description || !Number.isInteger(productDetails.units) || productDetails.units < 0 ||
+            !categories.some(function (category) { return category.name === productDetails.category; })) return;
+        var editedIndex = editingProductId ? products.findIndex(function (item) { return item.id === editingProductId; }) : -1;
+        if (editingProductId && editedIndex < 0) {
+          showToast("This product could not be found.");
+          return;
+        }
+        var isEditing = editedIndex >= 0;
+        try {
+          var result = await apiRequest(
+            isEditing ? "/api/products/" + encodeURIComponent(editingProductId) : "/api/products",
+            isEditing ? "PUT" : "POST",
+            productDetails
+          );
+          if (!result.product || typeof result.product.id !== "string") {
+            throw new Error("The inventory backend did not confirm the saved product.");
+          }
+          if (isEditing) products[editedIndex] = result.product;
+          else products.push(result.product);
+        } catch (error) {
+          console.error("Could not save product to the backend:", error);
+          showToast(error.message);
+          return;
+        }
+        editingProductId = null;
+        selectedCategory = "All products";
+        categoryFilter.value = "All products";
+        searchInput.value = "";
+        sortSelect.value = "name";
+        render();
+        dialog.close();
+        showToast(isEditing ? "Product changes saved." : "Product added to your inventory.");
+      });
+
+      render();
+      loadInventory();
+    }());
+  </script>
+</body>
+</html>
