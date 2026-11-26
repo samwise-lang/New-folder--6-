@@ -19,7 +19,7 @@ const client = mongoUri ? new MongoClient(mongoUri) : null;
 app.disable("x-powered-by");
 app.use((request, response, next) => {
   const origin = request.get("Origin");
-  if (origin && /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\]):55\d{2}$/i.test(origin)) {
+  if (origin) {
     response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Vary", "Origin");
     response.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
@@ -131,10 +131,13 @@ app.use((error, request, response, next) => {
   });
 });
 
-async function start() {
-  if (!mongoUri) throw new Error("MONGODB_URI is required. Copy .env.example to .env and configure your Atlas URI.");
-  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("PORT must be a valid TCP port.");
+// --- Vercel fix: connect to MongoDB only when a request comes in ---
+let isConnected = false;
 
+async function ensureDb() {
+  if (!mongoUri) throw new Error("MONGODB_URI is required.");
+  if (isConnected && app.locals.inventory) return;
+  
   await client.connect();
   const database = client.db(databaseName);
   const collection = database.collection(collectionName);
@@ -144,20 +147,29 @@ async function start() {
     { upsert: true }
   );
   app.locals.inventory = collection;
+  isConnected = true;
+}
 
-  app.listen(port, host, () => {
-    console.log(`Stockroom is ready at http://${host}:${port}`);
+// Run ensureDb before every /api request
+app.use("/api", async (request, response, next) => {
+  try {
+    await ensureDb();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// For local testing only - Vercel will not use this
+if (require.main === module) {
+  ensureDb().then(() => {
+    app.listen(port, host, () => {
+      console.log(`Stockroom is ready at http://${host}:${port}`);
+    });
+  }).catch((error) => {
+    console.error("Stockroom could not start:", error.message);
+    process.exitCode = 1;
   });
 }
 
-start().catch(async (error) => {
-  console.error("Stockroom could not start:", error.message);
-  if (client) {
-    try {
-      await client.close();
-    } catch (closeError) {
-      console.error("Could not close the MongoDB client after startup failed:", closeError.message);
-    }
-  }
-  process.exitCode = 1;
-});
+module.exports = app;
