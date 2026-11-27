@@ -26,6 +26,15 @@ Live Server serves the HTML but does not run the API. Start the backend with `np
 
 The Netlify function handles the same API routes as the local server. Anyone who can reach the public site can view and change its inventory.
 
+## Deploy on Vercel
+
+1. Import this repository into Vercel with the repository root as the project root. `vercel.json` sets the build command to `npm run build` and the output directory to `dist`.
+2. In the Vercel project's Environment Variables settings, set `MONGODB_URI` to your Atlas connection string and `MONGODB_DB` to the database name (or `stockroom`). Apply them to the environments you use and redeploy.
+3. Configure MongoDB Atlas Network Access to allow connections from your Vercel function runtime. If you need a fixed allowlist, use a Vercel setup with static outbound IPs; only use a broad Atlas IP rule if you understand the exposure and have secured database credentials.
+4. Check `https://<your-domain>/api/health` for the API route, then `https://<your-domain>/api/products` to verify the database connection.
+
+Vercel serves the static page from `dist` and runs `api/[...route].js` for `/api/*`, reusing the existing inventory API logic.
+
 ## Storage and API
 
 The app uses one `inventory` collection and one bounded inventory document (`_id: "default"`). Its `products` array holds at most 10 products; each product has an ID, name, category, description, units, and timestamps. Keeping this small, always-read-together list in one document lets MongoDB enforce the cap atomically.

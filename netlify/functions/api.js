@@ -153,7 +153,7 @@ async function handler(event) {
 
     return jsonResponse(404, { error: "Not found." });
   } catch (error) {
-    console.error("Netlify inventory function failed:", error);
+    console.error("Inventory API function failed:", error);
     return jsonResponse(500, { error: "The server could not complete the request." });
   }
 }
