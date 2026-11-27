@@ -58,6 +58,15 @@ app.get("/", (request, response) => {
   response.sendFile(path.join(__dirname, "products.html"));
 });
 
+app.use("/api", async (request, response, next) => {
+  try {
+    await ensureDb();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/api/health", (request, response) => {
   response.json({ status: "ok" });
 });
@@ -149,16 +158,6 @@ async function ensureDb() {
   app.locals.inventory = collection;
   isConnected = true;
 }
-
-// Run ensureDb before every /api request
-app.use("/api", async (request, response, next) => {
-  try {
-    await ensureDb();
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
 
 // For local testing only - Vercel will not use this
 if (require.main === module) {
